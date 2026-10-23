@@ -7,27 +7,19 @@ function normalizeRect(x, y, width, height) {
   return { left, top, right, bottom };
 }
 
-function pointToSegmentDistance(point, start, end) {
-  const l2 = (end.x - start.x) ** 2 + (end.y - start.y) ** 2;
-
-  if (l2 === 0) {
-    return Math.hypot(point.x - start.x, point.y - start.y);
+function getElementBounds(element) {
+  if (element.type === "pencil" && element.points?.length) {
+    const xs = element.points.map((point) => point.x);
+    const ys = element.points.map((point) => point.y);
+    return {
+      left: Math.min(...xs),
+      top: Math.min(...ys),
+      right: Math.max(...xs),
+      bottom: Math.max(...ys),
+    };
   }
 
-  const t = Math.max(
-    0,
-    Math.min(
-      1,
-      ((point.x - start.x) * (end.x - start.x) + (point.y - start.y) * (end.y - start.y)) / l2
-    )
-  );
-
-  const projection = {
-    x: start.x + t * (end.x - start.x),
-    y: start.y + t * (end.y - start.y),
-  };
-
-  return Math.hypot(point.x - projection.x, point.y - projection.y);
+  return normalizeRect(element.x, element.y, element.width, element.height);
 }
 
 export function drawElement(ctx, element) {
@@ -36,8 +28,50 @@ export function drawElement(ctx, element) {
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
 
+  if (element.type === "text") {
+    ctx.fillStyle = element.color;
+    ctx.font = `${element.fontSize || 24}px ${element.fontFamily || "Arial"}`;
+    ctx.textBaseline = "top";
+    ctx.fillText(element.text || "", element.x, element.y);
+    return;
+  }
+
   if (element.type === "rectangle") {
     ctx.strokeRect(element.x, element.y, element.width, element.height);
+    return;
+  }
+
+  if (["ellipse", "triangle", "diamond", "arrow"].includes(element.type)) {
+    const centerX = element.x + element.width / 2;
+    const centerY = element.y + element.height / 2;
+    const right = element.x + element.width;
+    const bottom = element.y + element.height;
+
+    ctx.beginPath();
+    if (element.type === "ellipse") {
+      ctx.ellipse(centerX, centerY, Math.abs(element.width / 2), Math.abs(element.height / 2), 0, 0, Math.PI * 2);
+    } else if (element.type === "triangle") {
+      ctx.moveTo(centerX, element.y);
+      ctx.lineTo(right, bottom);
+      ctx.lineTo(element.x, bottom);
+      ctx.closePath();
+    } else if (element.type === "diamond") {
+      ctx.moveTo(centerX, element.y);
+      ctx.lineTo(right, centerY);
+      ctx.lineTo(centerX, bottom);
+      ctx.lineTo(element.x, centerY);
+      ctx.closePath();
+    } else {
+      const angle = Math.atan2(element.height, element.width);
+      const headLength = Math.min(18, Math.max(8, Math.hypot(element.width, element.height) * 0.2));
+      ctx.moveTo(element.x, element.y);
+      ctx.lineTo(right, bottom);
+      ctx.moveTo(right, bottom);
+      ctx.lineTo(right - headLength * Math.cos(angle - Math.PI / 6), bottom - headLength * Math.sin(angle - Math.PI / 6));
+      ctx.moveTo(right, bottom);
+      ctx.lineTo(right - headLength * Math.cos(angle + Math.PI / 6), bottom - headLength * Math.sin(angle + Math.PI / 6));
+    }
+    ctx.stroke();
     return;
   }
 
@@ -66,41 +100,19 @@ export function drawElement(ctx, element) {
 }
 
 export function getElementAtPosition(elements, x, y) {
-  const tolerance = 8;
+  const tolerance = 10;
 
   for (let i = elements.length - 1; i >= 0; i -= 1) {
     const element = elements[i];
+    const bounds = getElementBounds(element);
+    const inside =
+      x >= bounds.left - tolerance &&
+      x <= bounds.right + tolerance &&
+      y >= bounds.top - tolerance &&
+      y <= bounds.bottom + tolerance;
 
-    if (element.type === "rectangle") {
-      const rect = normalizeRect(element.x, element.y, element.width, element.height);
-      const inside =
-        x >= rect.left - tolerance &&
-        x <= rect.right + tolerance &&
-        y >= rect.top - tolerance &&
-        y <= rect.bottom + tolerance;
-
-      if (inside) {
-        return element;
-      }
-    }
-
-    if (element.type === "line") {
-      const start = { x: element.x, y: element.y };
-      const end = { x: element.x + element.width, y: element.y + element.height };
-      if (pointToSegmentDistance({ x, y }, start, end) <= tolerance) {
-        return element;
-      }
-    }
-
-    if (element.type === "pencil" && element.points.length > 1) {
-      for (let pointIndex = 0; pointIndex < element.points.length - 1; pointIndex += 1) {
-        const start = element.points[pointIndex];
-        const end = element.points[pointIndex + 1];
-
-        if (pointToSegmentDistance({ x, y }, start, end) <= tolerance) {
-          return element;
-        }
-      }
+    if (inside) {
+      return element;
     }
   }
 

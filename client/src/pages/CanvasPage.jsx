@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Check, Copy, Hash, UserRound, UsersRound } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { WhiteboardCanvas } from "../canvas/WhiteboardCanvas";
 import { ChatPanel } from "../components/ChatPanel";
@@ -15,6 +16,8 @@ export function CanvasPage() {
   const { roomId } = useParams();
   const navigate = useNavigate();
   const [copyState, setCopyState] = useState("idle");
+  const [isChatVisible, setIsChatVisible] = useState(false);
+  const [visibleRoomInfo, setVisibleRoomInfo] = useState(null);
 
   const {
     userId,
@@ -34,6 +37,18 @@ export function CanvasPage() {
     addOrUpdateElement,
     deleteElement,
     clearElements,
+    selectedTool,
+    color,
+    strokeWidth,
+    setSelectedTool,
+    setColor,
+    setStrokeWidth,
+    undo,
+    redo,
+    fontFamily,
+    setFontFamily,
+    fontSize,
+    setFontSize,
   } = useBoardStore();
 
   useEffect(() => {
@@ -192,22 +207,79 @@ export function CanvasPage() {
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-zinc-300">
           <h1 className="font-['Space_Grotesk',sans-serif] text-xl font-semibold text-white md:text-2xl">CollabBoard Room</h1>
           <div className="flex items-center gap-2 text-sm">
-            <span className="rounded bg-zinc-800 px-2 py-1">Room: {roomId}</span>
-            <span className="rounded bg-zinc-800 px-2 py-1">Users: {users.length + 1}</span>
-            <span className="rounded bg-zinc-800 px-2 py-1">You: {userId}</span>
+            <button
+              type="button"
+              onClick={() => setVisibleRoomInfo((current) => (current === "room" ? null : "room"))}
+              className="flex items-center gap-2 rounded bg-zinc-800 p-2 text-sm hover:bg-zinc-700"
+              title="Show room code"
+              aria-label={`Show room code ${roomId}`}
+            >
+              <Hash size={14} aria-hidden="true" />
+              {visibleRoomInfo === "room" ? <span>{roomId}</span> : null}
+            </button>
+            <button
+              type="button"
+              onClick={() => setVisibleRoomInfo((current) => (current === "users" ? null : "users"))}
+              className="flex items-center gap-2 rounded bg-zinc-800 p-2 text-sm hover:bg-zinc-700"
+              title="Show total users"
+              aria-label={`Show total users ${users.length + 1}`}
+            >
+              <UsersRound size={14} aria-hidden="true" />
+              {visibleRoomInfo === "users" ? <span>{users.length + 1}</span> : null}
+            </button>
+            <button
+              type="button"
+              onClick={() => setVisibleRoomInfo((current) => (current === "user" ? null : "user"))}
+              className="flex items-center gap-2 rounded bg-zinc-800 p-2 text-sm hover:bg-zinc-700"
+              title="Show your user ID"
+              aria-label={`Show your user ID ${userId}`}
+            >
+              <UserRound size={14} aria-hidden="true" />
+              {visibleRoomInfo === "user" ? <span>{userId}</span> : null}
+            </button>
             <button
               type="button"
               onClick={handleCopyRoomCode}
-              className="rounded bg-sky-500 px-2 py-1 text-zinc-900 hover:bg-sky-400"
+              className="rounded bg-sky-500 p-2 text-zinc-900 hover:bg-sky-400"
+              aria-label={copyState === "copied" ? "Room code copied" : "Copy room code"}
+              title={copyState === "copied" ? "Room code copied" : "Copy room code"}
             >
-              {copyState === "copied" ? "Copied" : copyState === "error" ? "Copy failed" : "Copy Room Code"}
+              {copyState === "copied" ? <Check size={16} aria-hidden="true" /> : <Copy size={16} aria-hidden="true" />}
             </button>
+            {copyState === "copied" ? (
+              <span className="rounded bg-emerald-500/20 px-2 py-1 text-xs text-emerald-300" role="status">
+                Room code copied!
+              </span>
+            ) : null}
+            {copyState === "error" ? (
+              <span className="rounded bg-rose-500/20 px-2 py-1 text-xs text-rose-300" role="alert">
+                Copy failed
+              </span>
+            ) : null}
           </div>
         </div>
 
         <Toolbar
           onClear={handleClear}
           onSave={handleSave}
+          selectedTool={selectedTool}
+          onToolChange={setSelectedTool}
+          color={color}
+          onColorChange={setColor}
+          strokeWidth={strokeWidth}
+          onStrokeWidthChange={setStrokeWidth}
+          onUndo={() => {
+            const nextElements = undo();
+            socket?.emit("SCENE_CHANGE", { roomId, elements: nextElements });
+          }}
+          onRedo={() => {
+            const nextElements = redo();
+            socket?.emit("SCENE_CHANGE", { roomId, elements: nextElements });
+          }}
+          fontFamily={fontFamily}
+          onFontFamilyChange={setFontFamily}
+          fontSize={fontSize}
+          onFontSizeChange={setFontSize}
         />
 
         <div className="mt-3">
@@ -223,21 +295,36 @@ export function CanvasPage() {
             onToggleMute={toggleMute}
             remotePeers={remotePeers}
             error={voiceError}
+            isChatVisible={isChatVisible}
+            onChatToggle={() => setIsChatVisible((visible) => !visible)}
           />
         </div>
 
-        <div className="mt-3 flex flex-col gap-3 lg:flex-row">
+        <div className="relative mt-3">
           <div className="relative flex-1">
             <WhiteboardCanvas
               elements={elements}
               roomId={roomId}
               socket={socket}
               setElements={setElements}
+              selectedTool={selectedTool}
+              color={color}
+              strokeWidth={strokeWidth}
+              userId={userId}
+              fontFamily={fontFamily}
+              fontSize={fontSize}
             />
             <CursorLayer cursors={cursors} />
           </div>
 
-          <ChatPanel userId={userId} messages={messages} onSendMessage={handleSendMessage} />
+          {isChatVisible ? (
+            <ChatPanel
+              userId={userId}
+              messages={messages}
+              onSendMessage={handleSendMessage}
+              onClose={() => setIsChatVisible(false)}
+            />
+          ) : null}
         </div>
       </section>
     </main>

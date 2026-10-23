@@ -6,7 +6,7 @@ function getElementId() {
   return `el-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-export function createElement({ tool, startX, startY, x, y, color, strokeWidth, userId }) {
+export function createElement({ tool, startX, startY, x, y, color, strokeWidth, userId, text = "", fontFamily = "Arial", fontSize = 24 }) {
   const base = {
     id: getElementId(),
     type: tool,
@@ -27,6 +27,17 @@ export function createElement({ tool, startX, startY, x, y, color, strokeWidth, 
         { x: startX, y: startY },
         { x, y },
       ],
+    };
+  }
+
+  if (tool === "text") {
+    return {
+      ...base,
+      text,
+      fontFamily,
+      fontSize,
+      width: Math.max(24, text.length * fontSize * 0.55),
+      height: fontSize,
     };
   }
 

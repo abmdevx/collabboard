@@ -22,6 +22,8 @@ export const useBoardStore = create((set, get) => ({
   selectedTool: "pencil",
   color: "#111111",
   strokeWidth: 2,
+  fontFamily: "Arial",
+  fontSize: 24,
 
   setRoomId: (roomId) => set({ roomId }),
   setSocket: (socket) => set({ socket }),
@@ -55,6 +57,8 @@ export const useBoardStore = create((set, get) => ({
   setSelectedTool: (selectedTool) => set({ selectedTool }),
   setColor: (color) => set({ color }),
   setStrokeWidth: (strokeWidth) => set({ strokeWidth }),
+  setFontFamily: (fontFamily) => set({ fontFamily }),
+  setFontSize: (fontSize) => set({ fontSize }),
 
   setElements: (elements, options = { record: true }) => {
     if (options.record) {

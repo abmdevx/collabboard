@@ -158,7 +158,7 @@ export function useVoiceChat({ roomId, socket, userId }) {
 
       setIsInVoice(true);
       socket.emit("VOICE_JOIN", { roomId, userId });
-    } catch (joinError) {
+    } catch {
       setError("Microphone access failed. Please allow microphone permission.");
       setIsInVoice(false);
     } finally {

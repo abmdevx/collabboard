@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { X } from "lucide-react";
 
 function formatTime(value) {
   const date = new Date(value);
@@ -9,12 +10,16 @@ function formatTime(value) {
   return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-export function ChatPanel({ userId, messages, onSendMessage }) {
+export function ChatPanel({ userId, messages, onSendMessage, onClose }) {
   const [draft, setDraft] = useState("");
   const endRef = useRef(null);
+  const messagesRef = useRef(null);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesRef.current?.scrollTo({
+      top: messagesRef.current.scrollHeight,
+      behavior: "smooth",
+    });
   }, [messages]);
 
   const renderedMessages = useMemo(() => messages.slice(-100), [messages]);
@@ -32,12 +37,20 @@ export function ChatPanel({ userId, messages, onSendMessage }) {
   }
 
   return (
-    <aside className="flex h-[560px] w-full flex-col overflow-hidden rounded-2xl border border-zinc-700/40 bg-zinc-950/80 shadow-xl backdrop-blur lg:max-w-[340px]">
-      <header className="border-b border-zinc-700/50 px-4 py-3">
+    <aside className="absolute right-3 top-3 z-20 flex h-[min(420px,calc(100%-1.5rem))] max-h-[420px] w-[min(300px,calc(100%-1.5rem))] flex-col overflow-hidden rounded-2xl border border-zinc-700/40 bg-zinc-950/95 shadow-2xl backdrop-blur">
+      <header className="flex items-center justify-between border-b border-zinc-700/50 px-4 py-3">
         <h2 className="font-['Space_Grotesk',sans-serif] text-base font-semibold text-zinc-100">Room Chat</h2>
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-md px-2 py-1 text-lg leading-none text-zinc-400 hover:bg-zinc-800 hover:text-white"
+          aria-label="Close chat"
+        >
+          <X size={18} aria-hidden="true" />
+        </button>
       </header>
 
-      <div className="flex-1 space-y-2 overflow-y-auto px-3 py-3">
+      <div ref={messagesRef} className="flex-1 space-y-2 overflow-y-auto px-3 py-3">
         {renderedMessages.length === 0 ? (
           <p className="rounded-lg border border-dashed border-zinc-700/60 bg-zinc-900/70 px-3 py-2 text-xs text-zinc-400">
             No messages yet. Say hello to your collaborators.
